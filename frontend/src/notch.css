@@ -1,0 +1,134 @@
+/* The notch page: dark only, because the native notch shape is black. The library draws the shape. */
+html,
+body {
+  overflow: hidden;
+  background: #000;
+}
+
+body {
+  --wails-draggable: no-drag;
+}
+
+/* The camera housing covers the middle of the top edge: the content starts below it (housing.js). */
+.notch {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  height: 100%;
+  padding: calc(8px + var(--housing-top, 0px)) 20px 12px 24px;
+  background: #000;
+}
+
+.notch .ring {
+  width: 44px;
+  height: 44px;
+}
+
+.notch__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notch__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.notch__detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.notch__detail.is-failed {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--danger);
+}
+
+.notch__datum {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.notch__action {
+  position: relative;
+  flex: none;
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+/* 32px controls with a 44px hit area. */
+.notch__action::before,
+.notch__hide::before {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
+}
+
+.notch__hide {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms;
+}
+
+.notch__hide:hover {
+  color: var(--text);
+  border-color: var(--line2);
+}
+
+.notch__hide svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.notch__hide:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+/* An offer needs its whole sentence and three buttons: no ring, and the sentence may take two lines. */
+.notch--offer .notch__name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  font-size: 14px;
+  line-height: 1.3;
+}

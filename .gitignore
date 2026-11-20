@@ -1,0 +1,36 @@
+.task
+bin
+frontend/dist/*
+!frontend/dist/.gitkeep
+frontend/node_modules
+frontend/bindings
+build/linux/appimage/build
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+*.syso
+# Mobile generated (per-machine; overlays hold absolute paths)
+build/ios/xcode/overlay.json
+build/ios/xcode/gen/
+build/android/overlay.json
+build/android/gen/
+# Local data, notes and secrets
+.data
+design/
+*.local.md
+.claude/local/
+.claude/settings.local.json
+*.key
+.env
+*.test
+*.out
+go.work
+go.work.sum
+.DS_Store
+dist-release
+
+# Local build artifact of `go build .`
+/kolo-share-wails3-example
+.claude/
+AGENTS.md
+CLAUDE.md
+AGENTS.local.md
+CLAUDE.local.md

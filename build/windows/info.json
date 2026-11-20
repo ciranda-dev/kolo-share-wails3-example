@@ -1,0 +1,15 @@
+{
+	"fixed": {
+		"file_version": "0.0.0"
+	},
+	"info": {
+		"0409": {
+			"ProductVersion": "0.0.0",
+			"CompanyName": "Ciranda",
+			"FileDescription": "Share files and folders between two computers, built with Kolo",
+			"LegalCopyright": "(c) 2026, Ciranda",
+			"ProductName": "Kolo Share",
+			"Comments": "Kolo Share, share files and folders between two computers"
+		}
+	}
+}

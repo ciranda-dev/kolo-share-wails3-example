@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Kolo Share
+Comment=Share files and folders between two computers, built with Kolo
+Exec=kolo-share %u
+Icon=kolo-share
+Terminal=false
+Categories=Network;FileTransfer;
+StartupWMClass=kolo-share
