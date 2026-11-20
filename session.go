@@ -635,7 +635,7 @@ func (s *ShareService) writeHello(ss *session, l *link) {
 // writeFeatures says what this app reads, in one frame on a second unidirectional stream: an app that does not
 // know the stream refuses it without reading, and then never gets a message it cannot read.
 func (s *ShareService) writeFeatures(l *link) {
-	if s.hooks.oldPeer {
+	if s.hooks.noFeatures {
 		return
 	}
 	st, err := l.conn.OpenUniStream(l.ctx)
@@ -707,7 +707,7 @@ func (s *ShareService) readControl(ss *session, l *link) {
 			if err != nil {
 				return
 			}
-			if first && !s.hooks.oldPeer {
+			if first && !s.hooks.noFeatures {
 				s.readFeatures(ss, extra)
 			} else {
 				extra.CancelRead(0)
@@ -720,8 +720,8 @@ func (s *ShareService) readControl(ss *session, l *link) {
 		if err == nil {
 			m, err = decodeControl(body)
 		}
-		if err == nil && s.hooks.oldPeer && m.typ > ctlBye {
-			err = protoErr("message type", nil) // what an app of an older version does
+		if err == nil && s.hooks.noFeatures && m.typ > ctlBye {
+			err = protoErr("message type", nil) // what an app without the feature does
 		}
 		if err == nil {
 			err = s.handle(ss, l, m)

@@ -17,7 +17,7 @@ type testHooks struct {
 	netGate     chan struct{}                             // the network stays "starting" until it is closed
 	notchHook   func()                                    // runs between reading the notch state and sending it
 	dht         *kolodht.Config                           // the kolo-dht settings of every swarm, to play a firewall
-	oldPeer     bool                                      // plays an app of an earlier version: no features stream, PREPARE is a protocol error
+	noFeatures  bool                                      // plays an app that does not know the features stream: it sends none, and PREPARE is a protocol error
 	swarmCfg    func(*koloswarm.Config)                   // sees the config of the session swarm before it opens
 	pairCfg     func(*koloswarm.Config)                   // sees the config of a pairing swarm before it opens
 	prepStep    func(ctx context.Context, n int)          // runs at every chunk a send stores, to hold or slow a preparation

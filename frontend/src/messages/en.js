@@ -254,7 +254,6 @@ export const en = {
   'error.reveal-failed': 'Could not show {detail}: {cause}.',
   'error.name-too-long': 'A name has at most {detail} characters.',
   'error.pair-invalid-code': 'This is not a pairing code. Copy the whole code, it starts with koloinv0.',
-  'error.old-code': 'Share codes from Kolo Share 0.1.2 and earlier no longer work. Ask for a pairing code.',
   'error.pair-not-found': 'Could not find the computer that made this code. Check that its app is open and shows the code, then try again.',
   'error.pair-expired': 'This code expired. Ask for a new one.',
   'error.pair-used': 'This code was already used. Ask for a new one.',

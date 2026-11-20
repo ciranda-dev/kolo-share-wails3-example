@@ -93,7 +93,6 @@ const SHOTS = [
   ['connect-join-idle', 'idle', openJoin],
   ['connect-pasted', 'idle', [...openJoin, paste]],
   ['connect-bad-code', 'idle', [...openJoin, typeCode('hello'), connect]],
-  ['connect-old-code', 'idle', [...openJoin, typeCode('kolo-share:fwAAAeWwzXkT8Yqjotld3Q9sVb2mK7pLx4RtYh1uGc8nEoZ5aJ6wDf0iBvMXyUHCq'), connect]],
   ['connect-empty-code', 'idle', [...openJoin, connect]],
   ['connect-looking', 'looking', []],
   ['connect-joining', 'joining', []],

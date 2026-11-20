@@ -254,7 +254,6 @@ export const es = {
   'error.reveal-failed': 'No se ha podido mostrar {detail}: {cause}.',
   'error.name-too-long': 'Un nombre tiene como máximo {detail} caracteres.',
   'error.pair-invalid-code': 'Esto no es un código de conexión. Copia el código completo, empieza por koloinv0.',
-  'error.old-code': 'Los códigos de Kolo Share 0.1.2 y anteriores ya no funcionan. Pide un código de conexión.',
   'error.pair-not-found': 'No se ha encontrado el equipo que creó este código. Comprueba que su app esté abierta y muestre el código, y vuelve a intentarlo.',
   'error.pair-expired': 'Este código venció. Pide uno nuevo.',
   'error.pair-used': 'Este código ya se usó. Pide uno nuevo.',

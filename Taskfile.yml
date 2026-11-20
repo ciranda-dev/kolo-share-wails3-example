@@ -6,7 +6,7 @@ vars:
   PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
   VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
   # The release the app reports and the installers carry: KOLO_VERSION, else the git tag, else "dev" (also in a copy
-  # without .git). `task ... APP_VERSION=0.1.10` sets it too; scripts/release-local.sh sets both.
+  # without .git). `task ... APP_VERSION=0.1.0` sets it too; scripts/release-local.sh sets both.
   APP_VERSION:
     sh: 'v=${KOLO_VERSION:-}; [ -n "$v" ] || v=$(git describe --tags --dirty 2>/dev/null) || v=; v=${v#v}; echo "${v:-dev}"'
   # Target OS for build/package/run. Defaults to the host OS, and is overridden

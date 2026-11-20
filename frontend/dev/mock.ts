@@ -627,7 +627,7 @@ export async function Reconnect() {
   }, 1500)
 }
 
-const info = () => ({ dataDir: settings.dataDir, version: '0.1.3', network: { ...network, seq: netSeq }, defaultSaveFolder: DOWNLOADS })
+const info = () => ({ dataDir: settings.dataDir, version: '0.1.0', network: { ...network, seq: netSeq }, defaultSaveFolder: DOWNLOADS })
 
 export async function Reveal(path: string) {
   if (!history.some((x) => x.result === 'done' && x.savedTo === path) && !transfers.some((x) => x.state === 'done' && x.savedTo === path)) {
@@ -688,9 +688,6 @@ export async function CreatePairing() {
 
 export async function JoinPairing(code: string) {
   const text = code.replace(/\s+/g, '')
-  if (text.toLowerCase().startsWith('kolo-share:')) {
-    reject(err('invalid-code', 'old-code', 'Share codes from Kolo Share 0.1.2 and earlier no longer work. Ask for a pairing code.'))
-  }
   if (!/^koloinv0[a-z2-7]{84}$/.test(text) && !/^KOLOINV0[A-Z2-7]{84}$/.test(text)) {
     reject(err('invalid-code', 'pair-invalid-code', 'This is not a pairing code. Copy the whole code, it starts with koloinv0.'))
   }

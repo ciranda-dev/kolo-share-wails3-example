@@ -23,9 +23,7 @@ const (
 	joinTag           = "kolo-share/join/v0"
 	pairTag           = "kolo-share/pair/v0"
 	sessionSecretSize = 32
-	oldCodePrefix     = "kolo-share:"
-	// maxCodeText bounds the pasted text JoinPairing looks at, as v0.1.2 bounded a share code; a pairing code
-	// is 92 characters.
+	// maxCodeText bounds the pasted text JoinPairing looks at; a pairing code is 92 characters.
 	maxCodeText = 1024
 	// The join data and the pairing payload hold a tag, keys and a display name; their bounds follow from the fields.
 	maxJoinData    = 2*binary.MaxVarintLen64 + len(joinTag) + maxNameBytes
@@ -121,15 +119,12 @@ func (s *ShareService) JoinPairing(text string) (Pairing, error) {
 	return s.Pairing(context.Background()), nil
 }
 
-// parsePairingCode reads a pasted code. A share code of 0.1.2 and earlier gets its own error.
+// parsePairingCode reads a pasted code; white space anywhere in it is ignored.
 func parsePairingCode(text string) (invite.Code, error) {
 	if len(text) > maxCodeText {
 		return invite.Code{}, invite.ErrInvalidCode
 	}
 	text = strings.Join(strings.Fields(text), "")
-	if strings.HasPrefix(strings.ToLower(text), oldCodePrefix) {
-		return invite.Code{}, ErrOldCode
-	}
 	return invite.Parse(text)
 }
 

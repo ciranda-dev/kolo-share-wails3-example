@@ -2,7 +2,7 @@
 # Writes a release version into every build file that carries one: build/config.yml, the macOS Info.plist files, the
 # Windows manifest, info.json, MSIX files and NSIS defaults, and the deb's nfpm.yaml. The files are committed with the
 # development version 0.0.0; the app itself gets its version from -ldflags "-X main.version=...".
-# Usage: scripts/set-version.sh VERSION   (such as v0.1.10 or 0.1.10-3-gabc1234; only X.Y.Z goes into the files)
+# Usage: scripts/set-version.sh VERSION   (such as v0.1.0 or 0.1.0-3-gabc1234; only X.Y.Z goes into the files)
 # Running it again with the same version changes nothing, as the build tasks do once per architecture.
 set -euo pipefail
 

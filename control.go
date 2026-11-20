@@ -22,7 +22,7 @@ const (
 	ctlStatus   = 4 // the receiver's answer and progress for an offer
 	ctlSynced   = 5 // the sender resent every open offer after HELLO
 	ctlBye      = 6 // the side that closes the session
-	// The next three go only to a peer that said it understands them (see featPrepare): an older app ends the
+	// The next three go only to a peer that said it understands them (see featPrepare): an app ends the
 	// session on a type it does not know.
 	ctlPrepare = 7 // the sender is preparing an item: what it is and how far it got
 	ctlReady   = 8 // a prepared item is offered: the OFFER with this ID follows

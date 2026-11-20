@@ -280,36 +280,37 @@ func TestPrepOverTheLimitShowsNoCard(t *testing.T) {
 	}
 }
 
-// An app of an earlier version ends the session on a message it does not know, so a sender never announces to a
-// peer that did not say it reads the announcements, and the offer works as it always did.
-func TestPrepOldPeerKeepsWorking(t *testing.T) {
-	alice, bob := networkWith(t, Config{}, Config{}, nil, func(s *ShareService) { s.hooks.oldPeer = true })
+// An app ends the session on a message it does not know, so a sender never announces to a peer that did not say
+// it reads the announcements, and the offer works without them.
+func TestPrepPeerWithoutFeaturesKeepsWorking(t *testing.T) {
+	alice, bob := networkWith(t, Config{}, Config{}, nil, func(s *ShareService) { s.hooks.noFeatures = true })
 	sa, sb := connect(t, alice, bob)
 	time.Sleep(time.Second) // a features frame would have arrived by now
 	alice.mu.Lock()
 	known := alice.sessions[sa].peerPrep
 	alice.mu.Unlock()
 	if known {
-		t.Fatal("alice thinks an old peer reads announcements")
+		t.Fatal("alice thinks a peer without features reads announcements")
 	}
 	body := randomBytes(t, 1<<20)
-	sent := offerItem(t, alice, sa, writeFile(t, "old.bin", body))
-	got := saveOffer(t, bob, sb, "old.bin", t.TempDir())
+	sent := offerItem(t, alice, sa, writeFile(t, "plain.bin", body))
+	got := saveOffer(t, bob, sb, "plain.bin", t.TempDir())
 	if b, err := os.ReadFile(got.SavedTo); got.State != stateDone || err != nil || !bytes.Equal(b, body) {
 		t.Fatalf("receive: %+v (%v)", got, err)
 	}
 	alice.rec.wait(t, sent.ID, stateDelivered)
 	if bob.rec.anyPreparingReceive() {
-		t.Fatal("an old peer got an announcement")
+		t.Fatal("a peer without features got an announcement")
 	}
 	if v := bob.rec.waitSession(t, sb, func(Session) bool { return true }); v.State != sessConnected {
 		t.Fatalf("session: %+v", v)
 	}
 }
 
-// What an old app does with the new messages, which is why they are never sent to it: it ends the session.
-func TestPrepMessageEndsTheSessionOfAnOldPeer(t *testing.T) {
-	alice, bob := networkWith(t, Config{}, Config{}, nil, func(s *ShareService) { s.hooks.oldPeer = true })
+// What an app without the feature does with the announcement messages, which is why they are never sent to it: it
+// ends the session.
+func TestPrepMessageEndsTheSessionOfAPeerWithoutFeatures(t *testing.T) {
+	alice, bob := networkWith(t, Config{}, Config{}, nil, func(s *ShareService) { s.hooks.noFeatures = true })
 	sa, sb := connect(t, alice, bob)
 	alice.inject(t, sa, ctlMsg{typ: ctlPrepare, prep: prepare{id: 1, kind: kindFile, name: "x"}})
 	if v := bob.rec.waitSession(t, sb, func(v Session) bool { return v.State == sessEnded }); v.Reason != endProtocol {

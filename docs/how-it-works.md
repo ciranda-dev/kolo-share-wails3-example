@@ -52,7 +52,7 @@ Storing a large item takes a while, so the sender tells the peer first, on the c
 
 The receiver keeps at most `maxOpenOffers` cards, takes at most 60 new ones a minute, shows none for an item over its limits, checks every field like any control message and ends the session on a malformed one. A card that hears nothing for 2 minutes ends with `prepare-stalled`. After a reconnect the sender says its items being prepared again, and a card it does not say is removed, as for offers.
 
-An older example ends the session on a message type it does not know, so the announcements are sent only to a peer that said it reads them: after its HELLO each example writes one frame of features on a second unidirectional stream (an older example refuses every stream after its control stream without reading it). A peer that never sends the frame gets the normal flow: the offer alone.
+An example ends the session on a message type it does not know, so the announcements are sent only to a peer that said it reads them: after its HELLO each example writes one frame of features on a second unidirectional stream (an example that does not know it refuses every stream after its control stream without reading it). A peer that never sends the frame gets the normal flow: the offer alone.
 
 ## Receiving an item
 
@@ -112,7 +112,7 @@ A transfer has three stages, one after the other: the sender prepares the item (
 | Stage | What limits it | Measured on a Mac with an M5 chip and an SSD (other jobs were running on it), items of 1 to 4 GiB, both examples in one process, a link of 20 ms round trip with no limit |
 |---|---|---|
 | prepare | the disk's sync of each batch, then the CPU | 130 to 200 MB/s |
-| pull | the link, the transport's window and the store | 31 to 36 MB/s measured with kolo-sync v0.1.7, which keeps 3 answers in flight; not measured again for an item of this size with the streamed pull of v0.1.8 |
+| pull | the link, the transport's window and the store | 31 to 36 MB/s, measured with a pull that keeps 3 answers in flight; not measured again for an item of this size with the streamed pull |
 | save | decrypting and writing the files | 270 to 440 MB/s |
 
 At those speeds 100 GB takes about 100e9 / speed in each stage, as an extrapolation, not a measurement:
@@ -157,17 +157,17 @@ Measured between two examples over simulated links (`KOLO_SHARE_BENCH=1 go test 
 
 The lossy rows run 100 MiB for growth and BBR and 20 MiB for the two Reno columns, since 100 MiB at 0.2 MB/s takes eight minutes; a smaller item includes more of the start, so those two columns are a little low. Without loss, growth reaches what flat windows give, about 9.3 MB/s of the 12.5 MB/s of the link (the pull verifies and stores each answer), and the defaults are held to about 2 MB/s by their window. With random loss the window is not the limit: Reno halves its rate at each loss and stays at 0.2 MB/s with any window, and BBR fills the 20 Mbit/s link (2.3 MB/s is 18 Mbit/s). The paths have independent random loss only, not the bursts, reordering or policers of a real network.
 
-### Streamed or one answer at a time
+### The streamed pull
 
-kolo-sync v0.1.8 asks once for the entries and keeps the link full with credit, where v0.1.7 asked for the next answer when the first bytes of the one before arrived and so moved about one answer of 1 MiB per round trip. Between two examples over simulated links, growth and BBR as the example sets them, 100 MiB, two runs each, MB/s (kolo-sync v0.1.7 in the example v0.1.9, v0.1.8 in v0.1.10; the load average of the Mac 3 to 6.6):
+The pull asks once for the entries and keeps the link full with credit, instead of asking for the next answer when the first bytes of the one before arrive, which would move about one answer of 1 MiB per round trip. Between two examples over simulated links, growth and BBR as the example sets them, 100 MiB, two runs each, MB/s (the load average of the Mac 3 to 6.6):
 
-| Path | one answer at a time (v0.1.7) | streamed (v0.1.8) |
-|---|---|---|
-| 30 ms, 100 Mbit/s, no loss | 11.45, 11.42 | 11.45, 11.44 |
-| 30 ms, 20 Mbit/s, 1 percent loss | 2.35, 2.36 | 2.35, 2.36 |
-| 100 ms, 100 Mbit/s, no loss | 9.44, 9.27 | 9.93, 10.09 |
+| Path | streamed pull |
+|---|---|
+| 30 ms, 100 Mbit/s, no loss | 11.45, 11.44 |
+| 30 ms, 20 Mbit/s, 1 percent loss | 2.35, 2.36 |
+| 100 ms, 100 Mbit/s, no loss | 9.93, 10.09 |
 
-At 30 ms the link is the limit in both, so a pull that is slow on such a link is not waiting for round trips. The streamed pull helps where the round trip is long, and a little under random loss on a long one.
+At 30 ms the link is the limit, so a pull that is slow on such a link is not waiting for round trips.
 
 ## What a transfer log line says
 
@@ -185,7 +185,7 @@ transfer: recv state=running rate_mbs=2.33 avg_mbs=2.35 bytes=58849790 answers=4
 | `rate_mbs` | MB/s (1,000,000 bytes) over the time since the last line | what the transfer does now |
 | `avg_mbs` | MB/s since the pull started | compare with a speed test of the sender's upload and your download: a number close to the slower of the two is the link |
 | `bytes`, `answers`, `avg_answer` | the bytes of the answers read, how many, and their average size | |
-| `streamed` | `true` when the other example streams the entries | `false`: the other example is older and answers one request at a time, so about one answer of 1 MiB per round trip: update it |
+| `streamed` | `true` when the other example streams the entries | `false`: the entries were asked for one request at a time, so about one answer of 1 MiB per round trip |
 | `inflight_max`, `inflight_avg` | requests for entries waiting, the most and the average (a request is 2 MiB of credit when streaming) | the pull keeps 2 to 8 waiting, as many as twice the round trip times the speed asks for; 8 all the time means the pull wants more than the link and the window give |
 | `first_byte_min` | the shortest time from a request to the first bytes of its answer | about the round trip of the path; far above the ping means the sender is slow to read its log |
 | `commit_idle`, `commit_busy`, `reader_wait` | time the store waited for an answer, time it spent verifying and storing, time the reader waited for bytes; all over the whole pull | `commit_idle` and `reader_wait` near `elapsed`: this computer waits for the network or the sender, not for its CPU or disk. `commit_busy` near `elapsed`: this computer is the limit |

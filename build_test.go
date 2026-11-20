@@ -118,7 +118,7 @@ func TestSetVersionRunsTwice(t *testing.T) {
 		}
 	}
 	run := func() ([]byte, error) {
-		return exec.Command(bash, filepath.Join(root, "scripts", "set-version.sh"), "0.1.15").CombinedOutput()
+		return exec.Command(bash, filepath.Join(root, "scripts", "set-version.sh"), "1.2.3").CombinedOutput()
 	}
 	files := func() map[string]string {
 		m := map[string]string{}
@@ -174,7 +174,7 @@ func taskVersion(t *testing.T, name, env string) string {
 }
 
 func TestTaskfileVersionWithoutGit(t *testing.T) {
-	for env, want := range map[string]string{"v0.1.15": "0.1.15", "0.1.15": "0.1.15", "": "dev"} {
+	for env, want := range map[string]string{"v1.2.3": "1.2.3", "1.2.3": "1.2.3", "": "dev"} {
 		if got := taskVersion(t, "APP_VERSION", env); got != want {
 			t.Errorf("APP_VERSION with KOLO_VERSION=%q is %q, want %q", env, got, want)
 		}
@@ -196,10 +196,10 @@ func TestReleaseFindsTheVersionInABinary(t *testing.T) {
 		ver, body string
 		want      bool
 	}{
-		"injected":      {"0.1.15", "\x00\x00go1.26\x00\x000.1.15\x00\x00", true},
-		"module only":   {"0.1.15", "github.com/ciranda-dev/kolo-dht\tv0.1.15\th1:abc", false},
-		"other version": {"0.1.15", "\x00\x000.1.14\x00", false},
-		"dirty":         {"0.1.15-dirty", "\x000.1.15-dirty\x00", true},
+		"injected":      {"1.2.3", "\x00\x00go1.26\x00\x001.2.3\x00\x00", true},
+		"module only":   {"1.2.3", "github.com/ciranda-dev/kolo-dht\tv1.2.3\th1:abc", false},
+		"other version": {"1.2.3", "\x00\x001.2.2\x00", false},
+		"dirty":         {"1.2.3-dirty", "\x001.2.3-dirty\x00", true},
 	} {
 		f := filepath.Join(dir, strings.ReplaceAll(name, " ", "-"))
 		if err := os.WriteFile(f, []byte(tc.body), 0o644); err != nil {

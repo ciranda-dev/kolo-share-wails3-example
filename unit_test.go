@@ -40,7 +40,7 @@ func (w *fakeShownWindow) Hide() application.Window {
 
 // A click on the tray icon hides the window and the next one opens the app. Nothing on that path closes the
 // window, and the app does not ask AppKit to end it when the window is gone from the screen (the cause of the
-// app quitting on a click in v0.1.1).
+// app quitting on a click).
 func TestTrayClickTogglesAndNeverQuits(t *testing.T) {
 	if macOptions().ApplicationShouldTerminateAfterLastWindowClosed {
 		t.Fatal("hiding the main window from the tray would end the app")

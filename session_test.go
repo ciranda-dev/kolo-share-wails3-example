@@ -1264,8 +1264,7 @@ func TestPairingRefusals(t *testing.T) {
 		"garbage":    {"hello", "pair-invalid-code"},
 		"empty":      {"", "pair-invalid-code"},
 		"huge":       {invite.Prefix + strings.Repeat("a", maxCodeText), "pair-invalid-code"},
-		"old code":   {"kolo-share:AAAAAAAA", "old-code"},
-		"old upper":  {"  KOLO-SHARE:AAAA", "old-code"},
+		"other app":  {"  KOLO-SHARE:AAAA", "pair-invalid-code"},
 		"mixed case": {"koloINV0" + strings.Repeat("a", 84), "pair-invalid-code"},
 	} {
 		_, err := bob.JoinPairing(c.text)

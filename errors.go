@@ -22,7 +22,6 @@ import (
 // Sentinels of the app, for errors.Is. Every error a window sees is a *ShareError that wraps one of them or an
 // error of a Kolo library.
 var (
-	ErrOldCode        = errors.New("kolo-share: a share code of 0.1.2 or earlier")
 	ErrOwnCode        = errors.New("kolo-share: own pairing code")
 	ErrBadFolder      = errors.New("kolo-share: bad folder")
 	ErrBusy           = errors.New("kolo-share: busy")
@@ -121,7 +120,6 @@ var reasons = map[string]struct{ kind, text string }{
 	"name-too-long":           {kindConfig, "A name has at most {detail} characters."},
 	// Pairing.
 	"pair-invalid-code": {kindInvalidCode, "This is not a pairing code. Copy the whole code, it starts with koloinv0."},
-	"old-code":          {kindInvalidCode, "Share codes from Kolo Share 0.1.2 and earlier no longer work. Ask for a pairing code."},
 	"pair-not-found":    {kindNotFound, "Could not find the computer that made this code. Check that its app is open and shows the code, then try again."},
 	"pair-expired":      {kindRefused, "This code expired. Ask for a new one."},
 	"pair-used":         {kindRefused, "This code was already used. Ask for a new one."},
@@ -206,8 +204,6 @@ func explain(err error, lim limits) *ShareError {
 		return se
 	case errors.Is(err, invite.ErrInvalidCode):
 		return shareErr("pair-invalid-code", err, "")
-	case errors.Is(err, ErrOldCode):
-		return shareErr("old-code", err, "")
 	case errors.Is(err, ErrOwnCode):
 		return shareErr("pair-own-code", err, "")
 	case errors.Is(err, ErrNotFound):
