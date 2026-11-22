@@ -65,7 +65,7 @@ func startOutage(t *testing.T, o *outage) {
 	t.Helper()
 	old := pull
 	t.Cleanup(func() { pull = old })
-	pull = func(ctx context.Context, c kolosync.Conn, r *kolostore.Replica) error {
+	pull = func(ctx context.Context, c kolosync.Conn, r *kolostore.Replica, m *kolosync.PullMeter) error {
 		start := r.Len()
 		done := make(chan struct{})
 		go func() {
@@ -81,7 +81,7 @@ func startOutage(t *testing.T, o *outage) {
 				}
 			}
 		}()
-		err := old(ctx, c, r)
+		err := old(ctx, c, r, m)
 		close(done)
 		o.mu.Lock()
 		o.calls = append(o.calls, pullCall{r.ID(), start, r.Len()})
@@ -275,7 +275,7 @@ func TestSeveralReceivesRunAtOnce(t *testing.T) {
 	var inside atomic.Int32
 	together := make(chan struct{})
 	var once sync.Once
-	pull = func(ctx context.Context, c kolosync.Conn, r *kolostore.Replica) error {
+	pull = func(ctx context.Context, c kolosync.Conn, r *kolostore.Replica, m *kolosync.PullMeter) error {
 		if inside.Add(1) >= n {
 			once.Do(func() { close(together) })
 		}
@@ -284,7 +284,7 @@ func TestSeveralReceivesRunAtOnce(t *testing.T) {
 		case <-time.After(20 * time.Second):
 			return errors.New("the pulls never ran together")
 		}
-		return old(ctx, c, r)
+		return old(ctx, c, r, m)
 	}
 	alice, bob := network(t, Config{}, nil)
 	sa, sb := connect(t, alice, bob)

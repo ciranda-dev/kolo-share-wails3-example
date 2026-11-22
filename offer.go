@@ -467,27 +467,29 @@ func (s *ShareService) receiveOffer(j *job, folder string) (string, error) {
 			(*c)(err)
 		}
 	}
-	moved := newStallClock() // when the store last grew
-	var seen int64
+	var vol volume
+	moved := newStallClock() // when the last byte came
+	var seen, last int64
 	stop := s.watch(j, func() int64 {
-		// The store holds ciphertext and tree nodes, more than the content; a compaction can shrink it for a
-		// moment, and the bytes shown never go back.
-		n := max(dirSize(dir), seen)
-		if n > storeBound(lim.bytes) {
+		// The store bounds the disk; the progress is the bytes taken off the connection, which move with every
+		// packet, while the store grows once per answer of about 1 MiB. The bytes shown never go back, and the logs
+		// hold more than the content, so the count passes the offer's size near the end.
+		if dirSize(dir) > storeBound(lim.bytes) {
 			abort(ErrTooLarge)
 		}
 		if rep := pulling.Load(); rep != nil && rep.Len() > offered.contentEntries() {
 			abort(ErrTooManyEntries)
 		}
-		if n != seen {
-			seen = n
+		got := int64(vol.got.bytes())
+		if got != last {
+			last = got
 			moved.touch()
+			s.bytesMoved(j)
 		}
-		n = min(n, o.bytes)
-		s.sendStatus(ss, o.id, stReceiving, n)
-		return n
+		seen = max(seen, got)
+		s.sendStatus(ss, o.id, stReceiving, min(seen, o.bytes))
+		return seen
 	})
-	var vol volume
 	var p plan
 	// The tree is checked as soon as the metadata is whole: against the offer, the limits and this system's
 	// names, before the content, which is nearly all of the item, is pulled.
@@ -526,7 +528,7 @@ func (s *ShareService) receiveOffer(j *job, folder string) (string, error) {
 	vol.late.b.Store(&backend)
 	v := vol.tree
 	s.update(j, func(t *Transfer) {
-		t.State, t.Name, t.FilesTotal, t.BytesTotal, t.BytesDone, t.BytesPerSecond = stateVerifying, p.local, p.files, p.bytes, 0, 0
+		t.State, t.Name, t.FilesTotal, t.BytesTotal, t.BytesDone, t.BytesPerSecond, t.Slow = stateVerifying, p.local, p.files, p.bytes, 0, 0, false
 	})
 	var written counter
 	var files atomic.Int64
@@ -585,7 +587,7 @@ func (s *ShareService) pullResuming(j *job, st *kolostore.Store, vol *volume, of
 		if l.ctx.Err() == nil && l.conn.Context().Err() == nil && explain(err, lim).Kind != kindLost {
 			return err
 		}
-		s.update(j, func(t *Transfer) { t.Stalled, t.BytesPerSecond = true, 0 })
+		s.update(j, func(t *Transfer) { t.Stalled, t.Slow, t.BytesPerSecond = true, false, 0 })
 		if moved.mark() != before {
 			wait = resumeMin
 		}

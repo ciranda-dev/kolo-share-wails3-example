@@ -25,7 +25,10 @@ import (
 const (
 	progressTick = 200 * time.Millisecond
 	// rateWindow is the span the speed is measured over: short enough to show a stall, long enough not to jump.
-	rateWindow   = 5 * time.Second
+	rateWindow = 5 * time.Second
+	// slowRate is the speed, in bytes a second, under which a receive that moves says its path is slow: 64 kbit/s,
+	// one digital telephone channel (ITU-T G.711).
+	slowRate     = 8_000
 	transfersDir = "transfers"
 )
 
@@ -104,7 +107,9 @@ type Transfer struct {
 	Skipped    int    `json:"skipped"` // send: links and special files that are not sent
 	// Stalled is true while a send or a receive moved no byte for stallAfter: the connection is slow, lost or
 	// being found again. A receive then tries again by itself.
-	Stalled        bool        `json:"stalled"`
+	Stalled bool `json:"stalled"`
+	// Slow is true while a receive moves at under slowRate over the last rateWindow: the path is slow, not stalled.
+	Slow           bool        `json:"slow"`
 	BytesPerSecond float64     `json:"bytesPerSecond"`
 	SavedTo        string      `json:"savedTo"`
 	Error          *ShareError `json:"error"`
@@ -321,7 +326,7 @@ func (s *ShareService) stallLoop() {
 			for _, j := range still {
 				s.update(j, func(t *Transfer) {
 					if now.Sub(j.moved) >= stallAfter { // j.moved is read under the lock of change
-						t.Stalled, t.BytesPerSecond = true, 0
+						t.Stalled, t.Slow, t.BytesPerSecond = true, false, 0
 					}
 				})
 			}
@@ -817,7 +822,7 @@ func (s *ShareService) change(j *job, started bool, f func(t *Transfer)) {
 // before anyone answered it is not recorded, so a flood of offers never fills the history.
 func (s *ShareService) finish(j *job, state string, se *ShareError, record bool) {
 	s.update(j, func(t *Transfer) {
-		t.Finished, t.BytesPerSecond, t.State, t.Error = time.Now().UnixMilli(), 0, state, se
+		t.Finished, t.BytesPerSecond, t.Slow, t.State, t.Error = time.Now().UnixMilli(), 0, false, state, se
 	})
 	s.mu.Lock()
 	t := j.t
@@ -864,7 +869,8 @@ func rateOf(samples []sample, now time.Time) (float64, []sample) {
 }
 
 // watch calls measure every progressTick until the returned function is called, and puts the result in
-// BytesDone with the speed of the last rateWindow.
+// BytesDone, at most BytesTotal, with the speed of the last rateWindow, which counts every byte measure gives. A
+// receive that moved under slowRate over a whole rateWindow since its first byte is Slow.
 func (s *ShareService) watch(j *job, measure func() int64) (stop func()) {
 	done := make(chan struct{})
 	var wg sync.WaitGroup
@@ -872,6 +878,8 @@ func (s *ShareService) watch(j *job, measure func() int64) (stop func()) {
 		tick := time.NewTicker(progressTick)
 		defer tick.Stop()
 		samples := []sample{{time.Now(), measure()}}
+		first := samples[0].n
+		var moving time.Time // when the first byte came
 		for {
 			select {
 			case <-done:
@@ -881,9 +889,18 @@ func (s *ShareService) watch(j *job, measure func() int64) (stop func()) {
 				var rate float64
 				samples = append(samples, sample{now, n})
 				rate, samples = rateOf(samples, now)
+				if moving.IsZero() && n != first {
+					moving = now
+				}
+				slow := !moving.IsZero() && now.Sub(moving) >= rateWindow && rate > 0 && rate < slowRate
 				s.update(j, func(t *Transfer) {
-					if t.BytesDone != n || t.BytesPerSecond != rate {
-						t.BytesDone, t.BytesPerSecond = n, rate
+					slow := slow && t.State == stateReceiving
+					shown := n
+					if t.BytesTotal > 0 {
+						shown = min(n, t.BytesTotal)
+					}
+					if t.BytesDone != shown || t.BytesPerSecond != rate || t.Slow != slow {
+						t.BytesDone, t.BytesPerSecond, t.Slow = shown, rate, slow
 					}
 				})
 			}
@@ -891,6 +908,18 @@ func (s *ShareService) watch(j *job, measure func() int64) (stop func()) {
 	})
 	var once sync.Once
 	return func() { once.Do(func() { close(done); wg.Wait() }) }
+}
+
+// bytesMoved records that bytes of j arrived now, also when the count it shows did not change, so it is not marked
+// stalled, and ends a stall it shows.
+func (s *ShareService) bytesMoved(j *job) {
+	s.mu.Lock()
+	j.moved = time.Now()
+	stalled := j.t.Stalled
+	s.mu.Unlock()
+	if stalled {
+		s.update(j, func(t *Transfer) { t.Stalled = false })
+	}
 }
 
 // jobDir is the private directory of a transfer's kolo-store, removed when it ends.

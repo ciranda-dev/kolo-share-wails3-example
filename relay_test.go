@@ -133,7 +133,7 @@ func TestFindTimeoutWithRelays(t *testing.T) {
 		want time.Duration
 	}{
 		{Config{}, defaultFindTimeout},
-		{Config{Relays: []string{a}}, 195 * time.Second},
+		{Config{Relays: []string{a}}, 72 * time.Second},
 		{Config{Relays: []string{a}, FindTimeout: 9 * time.Second}, 9 * time.Second},
 	} {
 		c.cfg.DataDir = t.TempDir()
@@ -149,7 +149,7 @@ func TestHelpNamesTheRelayFlags(t *testing.T) {
 	if _, err := LoadConfig([]string{"-h"}, env(nil), &out); !errors.Is(err, flag.ErrHelp) {
 		t.Fatalf("err: %v", err)
 	}
-	for _, want := range []string{"-relay value", "-relay-file value", "KOLO_SHARE_RELAYS", "default 1m, 195s with connection relays"} {
+	for _, want := range []string{"-relay value", "-relay-file value", "KOLO_SHARE_RELAYS", "default 1m, 72s with connection relays"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("help has no %q: %s", want, out.String())
 		}
@@ -392,8 +392,8 @@ func keepKeys(t *testing.T) func() []kololog.EntryKey {
 	var keys []kololog.EntryKey
 	old := pull
 	t.Cleanup(func() { pull = old })
-	pull = func(ctx context.Context, c kolosync.Conn, r *kolostore.Replica) error {
-		err := old(ctx, c, r)
+	pull = func(ctx context.Context, c kolosync.Conn, r *kolostore.Replica, m *kolosync.PullMeter) error {
+		err := old(ctx, c, r, m)
 		for i := range r.Len() {
 			if k, kerr := r.Key(i); kerr == nil {
 				mu.Lock()

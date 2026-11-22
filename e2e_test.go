@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -18,6 +20,7 @@ import (
 
 	kolodht "github.com/ciranda-dev/kolo-dht"
 	koloid "github.com/ciranda-dev/kolo-id"
+	"github.com/ciranda-dev/kolo-share-wails3-example/internal/netsim"
 )
 
 var waitFor = 60 * time.Second
@@ -408,4 +411,186 @@ func TestLocalModeShutdownOrder(t *testing.T) {
 	dave := startPeer(t, Config{Local: true, source: loopbackSource(port)}, nil)
 	dave.rec.waitNetwork(t, netReady)
 	sendOne(t, carol, dave)
+}
+
+// last is the newest state of transfer id.
+func (r *recorder) last(id string) Transfer {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	ts := r.transfers[id]
+	if len(ts) == 0 {
+		return Transfer{}
+	}
+	return ts[len(ts)-1]
+}
+
+// pathSend pairs two apps through a netsim link with half in each direction, offers a file of size random bytes from
+// alice and saves it on bob. It returns the IDs of the send and of the receive, the file and when Save was pressed.
+func pathSend(t *testing.T, half netsim.Profile, size int) (alice, bob *peer, link *netsim.Link, sendID, recvID string, body []byte, saved time.Time) {
+	t.Helper()
+	alice, bob, sa, sb, link := linkedPair(t, half, modeApp)
+	bob.SetSessionFolder(sb, t.TempDir())
+	body = randomBytes(t, size)
+	id, err := alice.Send(sa, writeFile(t, "path.bin", body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := incoming(t, bob, sb, "path.bin")
+	saved = time.Now()
+	if err := bob.SaveOffer(in.ID); err != nil {
+		t.Fatal(err)
+	}
+	return alice, bob, link, id, in.ID, body, saved
+}
+
+// savedBody waits for the receive id to end and returns what it saved.
+func savedBody(t *testing.T, p *peer, id string) []byte {
+	t.Helper()
+	tr := p.rec.wait(t, id, stateDone, stateFailed, stateCancelled, stateStopped, stateWithdrawn)
+	if tr.State != stateDone {
+		t.Fatalf("receive: %+v (%+v)", tr, tr.Error)
+	}
+	b, err := os.ReadFile(tr.SavedTo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+// A small item over a path of 470 ms round trip, the best round trip of a relayed transfer between two countries in
+// the field, takes round trips, not bandwidth: the pull of its two logs needs about 10, so Save to done stays within 12.
+func TestPathRoundTripsAt470ms(t *testing.T) {
+	const rtt = 470 * time.Millisecond
+	_, bob, link, _, in, body, saved := pathSend(t, netsim.Profile{Delay: rtt / 2}, 1<<10)
+	got := savedBody(t, bob, in)
+	took := time.Since(saved)
+	if !bytes.Equal(got, body) {
+		t.Fatal("the saved file differs")
+	}
+	if trips := took.Seconds() / rtt.Seconds(); trips > 12 {
+		t.Fatalf("Save to done took %v, %.1f round trips; want at most 12", took, trips)
+	}
+	t.Logf("1 KiB: Save to done in %v (%.1f round trips), %d packets to bob", took.Round(time.Millisecond), took.Seconds()/rtt.Seconds(), link.Down().Packets)
+	bob.rec.mu.Lock()
+	defer bob.rec.mu.Unlock()
+	for _, tr := range bob.rec.transfers[in] {
+		if tr.Slow {
+			t.Fatalf("a path of 470 ms with no rate limit was called slow: %+v", tr)
+		}
+	}
+}
+
+// The progress of a receive counts the bytes as they arrive, not the size of the store: on a path of 50 KB/s a
+// receive shows tens of KiB within seconds, long before its first answer of about 1 MiB is whole, and is not slow.
+func TestProgressMovesWithinAnAnswer(t *testing.T) {
+	_, bob, _, _, in, _, saved := pathSend(t, netsim.Profile{Rate: 50_000, Delay: 50 * time.Millisecond}, 3<<20)
+	tr := bob.rec.until(t, in, func(tr Transfer) bool { return tr.BytesDone >= 64<<10 || tr.final() })
+	if took := time.Since(saved); took > 8*time.Second || tr.State != stateReceiving || tr.Stalled || tr.Slow {
+		t.Fatalf("after %v: %+v; want 64 KiB received within 8 s, before the first answer of 1 MiB", took, tr)
+	}
+	if tr.BytesDone >= 1<<20 {
+		t.Fatalf("progress %d already past the first answer", tr.BytesDone)
+	}
+	bob.CancelTransfer(in)
+}
+
+// On a path below the 8.5 KB/s at which an answer of about 1 MiB used to be cut off, a receive moves, says the path is
+// slow with the speed it measures, and finishes. The item is 200 KiB, one entry, over 2 KB/s: the old floor of 16 KiB/s
+// cut it off after 72 s, the item takes about 2 minutes.
+func TestSlowPathCompletes(t *testing.T) {
+	if testing.Short() {
+		t.Skip("about 2 minutes")
+	}
+	old := waitFor
+	waitFor = 5 * time.Minute
+	t.Cleanup(func() { waitFor = old })
+	_, bob, _, _, in, body, saved := pathSend(t, netsim.Profile{Rate: 2_000, Delay: 50 * time.Millisecond}, 200<<10)
+	tr := bob.rec.until(t, in, func(tr Transfer) bool { return (tr.Slow && tr.BytesDone >= 32<<10) || tr.final() })
+	if tr.State != stateReceiving || tr.Stalled || tr.BytesPerSecond < 500 || tr.BytesPerSecond > 4_000 {
+		t.Fatalf("after %v: %+v; want a slow receive at about 2 KB/s", time.Since(saved), tr)
+	}
+	if got := savedBody(t, bob, in); !bytes.Equal(got, body) {
+		t.Fatal("the saved file differs")
+	}
+	t.Logf("200 KiB at 2 KB/s in %v", time.Since(saved).Round(time.Second))
+}
+
+// A path whose packets are capped below the 1500 bytes of Ethernet still carries a transfer from the first packet.
+// KOLO_SHARE_MTU_DROP=1 also runs a cap that appears after the connection found a larger size, as on a path that
+// changes: the transport must see the loss of its larger packets and fall back to 1200 bytes, which kolo-transport
+// v0.1.0 does not do (its CHANGELOG has the fix under Unreleased).
+func TestPacketSizeCaps(t *testing.T) {
+	if testing.Short() {
+		t.Skip("about a minute")
+	}
+	t.Run("1240 from the start", func(t *testing.T) {
+		_, bob, link, _, in, body, _ := pathSend(t, netsim.Profile{Delay: 20 * time.Millisecond, MTU: 1240}, 3<<20)
+		if got := savedBody(t, bob, in); !bytes.Equal(got, body) {
+			t.Fatal("the saved file differs")
+		}
+		if link.Down().DroppedMTU == 0 {
+			t.Fatal("no packet was over the cap: the test does not test it")
+		}
+	})
+	t.Run("1280 after a large transfer", func(t *testing.T) {
+		if os.Getenv("KOLO_SHARE_MTU_DROP") != "1" {
+			t.Skip("needs a kolo-transport that lowers its packet size after a black hole (newer than v0.1.0); set KOLO_SHARE_MTU_DROP=1")
+		}
+		alice, bob, sa, sb, link := linkedPair(t, netsim.Profile{Delay: 20 * time.Millisecond}, modeApp)
+		dest := t.TempDir()
+		for i, cap := range []int{0, 1280} {
+			link.SetMTU(cap)
+			name := "big" + strconv.Itoa(i) + ".bin"
+			body := randomBytes(t, 3<<20)
+			offerItem(t, alice, sa, writeFile(t, name, body))
+			got := saveOffer(t, bob, sb, name, dest)
+			if b, err := os.ReadFile(got.SavedTo); got.State != stateDone || err != nil || !bytes.Equal(b, body) {
+				t.Fatalf("cap %d: %+v (%v)", cap, got, err)
+			}
+		}
+		if link.Down().DroppedMTU == 0 {
+			t.Fatal("no packet was over the cap: the connection never used larger packets")
+		}
+	})
+}
+
+// Cancel ends a transfer at once on a slow path and on a path that carries nothing, from either card; a call that
+// does not end it fails the test with the stack of every goroutine, to show where it waits.
+func TestCancelOnStuckPaths(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		half netsim.Profile
+		cut  bool
+		who  string
+	}{
+		{"slow path, receiver cancels", netsim.Profile{Rate: 4_000, Delay: 100 * time.Millisecond}, false, "bob"},
+		{"dead path, sender cancels", netsim.Profile{Rate: 50_000, Delay: 100 * time.Millisecond}, true, "alice"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			alice, bob, link, sendID, in, _, _ := pathSend(t, tc.half, 4<<20)
+			bob.rec.until(t, in, func(tr Transfer) bool { return tr.BytesDone >= 16<<10 || tr.final() })
+			if tc.cut {
+				link.Cut(time.Hour)
+				time.Sleep(3 * time.Second)
+			}
+			p, id, other, otherID := bob, in, alice, sendID
+			if tc.who == "alice" {
+				p, id, other, otherID = alice, sendID, bob, in
+			}
+			start := time.Now()
+			if err := p.CancelTransfer(id); err != nil {
+				t.Fatal(err)
+			}
+			for !p.rec.last(id).final() {
+				if time.Since(start) > 2*time.Second {
+					buf := make([]byte, 8<<20)
+					t.Fatalf("Cancel did not end the transfer in 2 s: %+v\n%s", p.rec.last(id), buf[:runtime.Stack(buf, true)])
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+			if !tc.cut {
+				other.rec.until(t, otherID, func(tr Transfer) bool { return tr.final() })
+			}
+		})
+	}
 }

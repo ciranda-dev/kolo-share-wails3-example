@@ -117,9 +117,9 @@ func lyingOffer(t *testing.T, alice, bob *peer, files int) (Transfer, string) {
 }
 
 func TestReceiveRefusesTooManyEntriesBeforePulling(t *testing.T) {
-	defer func(f func(context.Context, kolosync.Conn, *kolostore.Replica) error) { pull = f }(pull)
+	defer func(f func(context.Context, kolosync.Conn, *kolostore.Replica, *kolosync.PullMeter) error) { pull = f }(pull)
 	var pulls atomic.Int32
-	pull = func(ctx context.Context, c kolosync.Conn, r *kolostore.Replica) error {
+	pull = func(ctx context.Context, c kolosync.Conn, r *kolostore.Replica, m *kolosync.PullMeter) error {
 		pulls.Add(1)
 		return kolosync.Pull(ctx, c, r)
 	}

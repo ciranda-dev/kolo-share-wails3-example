@@ -27,10 +27,10 @@ const (
 	// 300 MB of memory with the content log (see maxContentEntries), and as many inodes.
 	defaultMaxFiles    = 100_000
 	defaultFindTimeout = time.Minute
-	// relayFindTimeout is the default with connection relays: kolo-swarm tries the relays only after kolo-dht's
-	// Connect failed, which takes up to its 3 relays (kolo-dht's maxRelays) times its PunchTimeout of 45 s, and
-	// one relay dial takes up to 60 s.
-	relayFindTimeout      = 3*45*time.Second + 60*time.Second
+	// relayFindTimeout is the default with connection relays: kolo-swarm tries the relays once kolo-dht's Connect
+	// failed or ran for its punch window of two consistent mappings, 10 probes 1 s apart plus twice RequestTimeout of
+	// 1 s, and one relay dial takes up to 60 s.
+	relayFindTimeout      = 12*time.Second + 60*time.Second
 	defaultLookupInterval = 5 * time.Second
 	// defaultPairTTL is how long a pairing code works: a short lifetime, as kolo-invite asks for in its README and
 	// uses in its example, and the shortest of the board example's invite lifetimes. A code also ends at its first
@@ -85,7 +85,7 @@ type Config struct {
 	Listen         string        // -listen, KOLO_SHARE_LISTEN. Default 127.0.0.1:0 on a loopback network, else 0.0.0.0:0
 	MaxDownload    int64         // -max-download, KOLO_SHARE_MAX_DOWNLOAD: bytes one receive may download. Default 1 TiB
 	MaxFiles       int           // -max-files, KOLO_SHARE_MAX_FILES: files and folders one item may hold. Default 100000
-	FindTimeout    time.Duration // -find-timeout, KOLO_SHARE_FIND_TIMEOUT: how long a pasted code looks for the other computer. Default 1m, 195s with connection relays
+	FindTimeout    time.Duration // -find-timeout, KOLO_SHARE_FIND_TIMEOUT: how long a pasted code looks for the other computer. Default 1m, 72s with connection relays
 	LookupInterval time.Duration // -lookup-interval, KOLO_SHARE_LOOKUP_INTERVAL: time between lookups of a topic. Default 5s
 	PairTTL        time.Duration // -pair-ttl, KOLO_SHARE_PAIR_TTL: how long a pairing code works. Default 1h
 	ResumeFor      time.Duration // -resume-for, KOLO_SHARE_RESUME_FOR: how long a receive waits for bytes that stopped before it fails. Default 30m
@@ -147,7 +147,7 @@ func LoadConfig(args []string, getenv func(string) string, stderr io.Writer) (Co
 		{"listen", "KOLO_SHARE_LISTEN", "local IP:PORT (default 127.0.0.1:0 on a loopback network, else 0.0.0.0:0)", text(&c.Listen)},
 		{"max-download", "KOLO_SHARE_MAX_DOWNLOAD", "bytes one received item may download (default 1099511627776, 1 TiB)", size("max-download", &c.MaxDownload)},
 		{"max-files", "KOLO_SHARE_MAX_FILES", "files and folders one item may hold (default 100000)", count("max-files", &c.MaxFiles)},
-		{"find-timeout", "KOLO_SHARE_FIND_TIMEOUT", "how long a pasted code looks for the other computer (default 1m, 195s with connection relays)", dur("find-timeout", &c.FindTimeout)},
+		{"find-timeout", "KOLO_SHARE_FIND_TIMEOUT", "how long a pasted code looks for the other computer (default 1m, 72s with connection relays)", dur("find-timeout", &c.FindTimeout)},
 		{"lookup-interval", "KOLO_SHARE_LOOKUP_INTERVAL", "time between lookups of a topic (default 5s)", dur("lookup-interval", &c.LookupInterval)},
 		{"pair-ttl", "KOLO_SHARE_PAIR_TTL", "how long a pairing code works, from 1s to 720h (default 1h)", dur("pair-ttl", &c.PairTTL)},
 		{"resume-for", "KOLO_SHARE_RESUME_FOR", "how long a download waits for bytes that stopped before it fails, from 1s to 24h (default 30m)", dur("resume-for", &c.ResumeFor)},

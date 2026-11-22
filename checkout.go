@@ -242,6 +242,9 @@ func (w writer) checkout(ctx context.Context, v fs.FS, p plan, written io.Writer
 	}
 	err = w.writeTree(ctx, v, root, p, part, written, files)
 	if err == nil {
+		err = context.Cause(ctx) // a cancel that came during the last copy, which a whole file makes without a check
+	}
+	if err == nil {
 		err = renameOnto(root, part, final, p.dir)
 	}
 	if err != nil {
