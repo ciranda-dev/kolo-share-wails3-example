@@ -20,6 +20,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 ### Changed
 
 - `-bootstrap`, `-relay` and `-relay-file` no longer stop at 16 entries, as kolo-swarm no longer does. Duplicate and clashing relays are still refused.
+- Up to 118 sessions may be open at once, not 16: as many as fit kolo-transport's default `MaxMemory` of 1 GiB with their windows and their growth, now that kolo-swarm has no topic cap. The session swarm takes `MaxPeers` 236, `MaxConns` 150 and `MaxDialed` 268, and the growth budget is 914.5 MiB.
 - The default `-find-timeout` with relays is 72 s instead of 195 s: kolo-swarm now tries the relays once kolo-dht's hole punch window (12 s) passed, not only after the direct attempt failed (up to 135 s), so a code pasted on a computer that needs a relay finds the other one sooner.
 
 ## [0.1.0] - 2026-11-20

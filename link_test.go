@@ -16,8 +16,8 @@ import (
 	kolotransport "github.com/ciranda-dev/kolo-transport"
 )
 
-// A session swarm grows the windows of the peers Allow admits from kolo-transport's default start, with a budget for the 16
-// paired peers, paces with BBR unless told otherwise, and has a memory budget under kolo-transport's default MaxMemory, so
+// A session swarm grows the windows of the peers Allow admits from kolo-transport's default start, with a budget for every
+// paired peer, paces with BBR unless told otherwise, and has a memory budget under kolo-transport's default MaxMemory, so
 // the swarm leaves MaxMemory alone.
 func TestSessionSwarmConfig(t *testing.T) {
 	var seen []*koloswarm.Config
@@ -35,19 +35,22 @@ func TestSessionSwarmConfig(t *testing.T) {
 	if !tc.WindowGrowth || tc.MaxStreamReceiveWindow != 256<<10 || tc.MaxConnReceiveWindow != 256<<10 {
 		t.Fatalf("growth %v, windows %d %d: a connection nobody marked must keep the default stream window", tc.WindowGrowth, tc.MaxStreamReceiveWindow, tc.MaxConnReceiveWindow)
 	}
-	if tc.MaxGrownStreamReceiveWindow != 4<<20 || tc.MaxGrownConnReceiveWindow != 8<<20 || tc.MaxGrownMemory != 16*(8<<20-256<<10) {
+	if tc.MaxGrownStreamReceiveWindow != 4<<20 || tc.MaxGrownConnReceiveWindow != 8<<20 || tc.MaxGrownMemory != maxSessions*(8<<20-256<<10) {
 		t.Fatalf("grown: %d %d, budget %d", tc.MaxGrownStreamReceiveWindow, tc.MaxGrownConnReceiveWindow, tc.MaxGrownMemory)
 	}
 	if tc.CongestionControl != "bbr" {
 		t.Fatalf("congestion control %q, want bbr", tc.CongestionControl)
 	}
-	if tc.MaxConns != 48 || tc.MaxDialed != 64 || tc.MaxMemory != 0 {
+	if tc.MaxConns != maxSessions+32 || tc.MaxDialed != 2*maxSessions+32 || tc.MaxMemory != 0 {
 		t.Fatalf("connections: %d %d, MaxMemory %d", tc.MaxConns, tc.MaxDialed, tc.MaxMemory)
 	}
 	conns := int64(tc.MaxConns + tc.MaxDialed)
 	need := conns*tc.MaxConnReceiveWindow + min(tc.MaxGrownMemory, conns*(tc.MaxGrownConnReceiveWindow-tc.MaxConnReceiveWindow))
 	if need > kolotransport.DefaultMaxMemory {
 		t.Fatalf("the windows and their growth need %d bytes, above the default MaxMemory", need)
+	}
+	if more := need + 3*tc.MaxConnReceiveWindow + tc.MaxGrownConnReceiveWindow - tc.MaxConnReceiveWindow; more <= kolotransport.DefaultMaxMemory {
+		t.Fatalf("%d sessions need %d bytes: one more still fits the default MaxMemory", maxSessions, need)
 	}
 	if c.Allow == nil || len(c.BootstrapNodes) == 0 {
 		t.Fatalf("the config lost its own fields: %+v", c)

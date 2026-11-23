@@ -102,15 +102,15 @@ func TestScaleLogOf150000Entries(t *testing.T) {
 		tenths[min(i/tenth, 9)] += time.Since(t0)
 	}
 	appended := time.Since(start)
-	grown := heapNow() - base
-	t.Logf("append %d entries: %v (%.0f us each), first tenth %v, last tenth %v; heap +%.1f MiB (%d bytes per entry)",
-		n, appended.Round(time.Millisecond), float64(appended.Microseconds())/float64(n), tenths[0].Round(time.Millisecond), tenths[9].Round(time.Millisecond), mib(grown), grown/uint64(n))
+	grown := int64(heapNow()) - int64(base) // the heap of earlier tests can shrink meanwhile
+	t.Logf("append %d entries: %v (%.0f us each), first tenth %v, last tenth %v; heap %+.1f MiB (%d bytes per entry)",
+		n, appended.Round(time.Millisecond), float64(appended.Microseconds())/float64(n), tenths[0].Round(time.Millisecond), tenths[9].Round(time.Millisecond), float64(grown)/(1<<20), grown/int64(n))
 	// The in-memory backend keeps its keys in one sorted slice, so only the Pebble writer says anything about the log.
 	if os.Getenv("KOLO_SHARE_SCALE_WRITER") == "pebble" && tenths[9] > 2*tenths[0]+time.Second {
 		t.Errorf("appending slows down with the length of the log: first tenth %v, last tenth %v", tenths[0], tenths[9])
 	}
-	if grown/uint64(n) > 2048 {
-		t.Errorf("the log keeps %d bytes in memory per entry", grown/uint64(n))
+	if grown/int64(n) > 2048 {
+		t.Errorf("the log keeps %d bytes in memory per entry", grown/int64(n))
 	}
 
 	// The signed head and its proofs at the full length.

@@ -15,12 +15,17 @@ const (
 	startWindow       = kolotransport.DefaultMaxStreamReceiveWindow
 	grownStreamWindow = 4 << 20
 	grownConnWindow   = 8 << 20
-	// grownMemory is the growth all marked connections hold together: the 16 paired peers each at the ceiling.
+	// maxSessions is the most sessions whose windows fit kolo-transport's default MaxMemory, the budget kolo-swarm derives
+	// its own places from: each session takes three windows (an accepted and two dialed connections) and the growth of
+	// one, next to the windows of the hellos and handshakes.
+	maxSessions = (kolotransport.DefaultMaxMemory/startWindow - 2*(sessionHandshakes+sessionPending)) / (3 + (grownConnWindow-startWindow)/startWindow)
+	// grownMemory is the growth all marked connections hold together: every paired peer at the ceiling.
 	grownMemory = maxSessions * (grownConnWindow - startWindow)
 	// sessionMaxPeers is two peers per session, so a peer that reconnects while its old connection is closing still
 	// has a place. Only the paired peers pass Allow.
 	sessionMaxPeers = 2 * maxSessions
-	// sessionHandshakes and sessionPending are kolo-swarm's MaxHandshakes and kolo-secure's MaxPending defaults.
+	// sessionHandshakes is kolo-swarm's MaxHandshakes default, and sessionPending as many: each kolo-secure handshake
+	// that ends becomes a hello.
 	sessionHandshakes = 16
 	sessionPending    = 16
 	// sessionConns and sessionDialed are what kolo-swarm computes from them: the
@@ -46,8 +51,8 @@ func validCongestion(name string) bool {
 
 // limitSession sets the peer limits, the window growth and the congestion controller of the session swarm on cfg, over
 // the kolo-dht settings it already has. The initial windows apply to every connection of the swarm's socket,
-// strangers included, so the connection counts are the app's own and not kolo-swarm's defaults, which are sized for 64
-// peers; growth is only for the connections the swarm marks after Allow admitted the paired peer, and never without Allow.
+// strangers included, so the connection counts are the app's own and not kolo-swarm's defaults, which it derives for
+// many more peers; growth is only for the connections the swarm marks after Allow admitted the paired peer, and never without Allow.
 func limitSession(cfg *koloswarm.Config, congestion string) {
 	var dht kolodht.Config
 	if cfg.DHT != nil {
