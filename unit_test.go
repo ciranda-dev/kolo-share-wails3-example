@@ -280,11 +280,17 @@ func TestResolve(t *testing.T) {
 		"node ipv6":          {DataDir: dir, Bootstrap: "[::1]:4000", bootstrapFrom: "flag"},
 		"node port 0":        {DataDir: dir, Bootstrap: "127.0.0.1:0", bootstrapFrom: "flag"},
 		"node garbage":       {DataDir: dir, Bootstrap: "not a node", bootstrapFrom: "flag"},
-		"too many nodes":     {DataDir: dir, Bootstrap: manyNodes(17), bootstrapFrom: "flag"},
 	} {
 		if _, err := c.resolve(); !errors.Is(err, ErrConfig) {
 			t.Errorf("%s: err %v, want ErrConfig", name, err)
 		}
+	}
+}
+
+func TestBootstrapTakesAnyNumberOfNodes(t *testing.T) {
+	s, err := Config{DataDir: t.TempDir(), Bootstrap: manyNodes(17), bootstrapFrom: "flag"}.resolve()
+	if err != nil || s.mode != modeOwn || len(s.nodes) != 17 {
+		t.Fatalf("17 nodes: %v %v", s.nodes, err)
 	}
 }
 

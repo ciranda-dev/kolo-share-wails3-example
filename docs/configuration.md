@@ -5,13 +5,13 @@ Every setting is a flag or an environment variable; a flag wins. A bad setting m
 | Flag | Environment | Default | Meaning |
 |---|---|---|---|
 | `-data` | `KOLO_SHARE_DATA` | `<user config dir>/kolo-share` | the data directory (see below) |
-| `-bootstrap` | `KOLO_BOOTSTRAP` | the [public network](#networks) | the entry nodes of your own network, a comma list of `host:port` as for kolo-swarm's `ParseNodes`: IPv4 or a host name, at most 16. Used alone: the public network is not touched |
+| `-bootstrap` | `KOLO_BOOTSTRAP` | the [public network](#networks) | the entry nodes of your own network, a comma list of `host:port` as for kolo-swarm's `ParseNodes`: IPv4 or a host name. Used alone: the public network is not touched |
 | `-local` | `KOLO_SHARE_LOCAL` | off | a [network on this computer only](#local-network): `1` or `true` turns it on, `0` or `false` off; the flag wins over the variable. Refused together with `-bootstrap` or `-first` |
 | `-first` | `KOLO_SHARE_FIRST` | none | run the first entry node of a test network on this loopback IP:PORT, such as `127.0.0.1:4000`, as your own network. For local testing only |
 | `-listen` | `KOLO_SHARE_LISTEN` | `127.0.0.1:0` when every entry node is on loopback, else `0.0.0.0:0` | local IPv4 IP:PORT |
 | `-max-download` | `KOLO_SHARE_MAX_DOWNLOAD` | `1099511627776` (1 TiB) | bytes one received item may download: a safety bound that you can raise or lower, not a size the example is tuned for (see below and [very large items](how-it-works.md#very-large-items)) |
 | `-max-files` | `KOLO_SHARE_MAX_FILES` | `100000` | files and folders one item may hold, on both sides (see below) |
-| `-relay` | `KOLO_SHARE_RELAYS` | none | relays, `host:port@key` with the relay's key as 64 hex characters, as for kolo-swarm's `ParseRelays`; repeat the flag or give a comma list; at most 16 in all, duplicates dropped. `KOLO_SHARE_RELAYS` is read only when neither `-relay` nor `-relay-file` is given |
+| `-relay` | `KOLO_SHARE_RELAYS` | none | relays, `host:port@key` with the relay's key as 64 hex characters, as for kolo-swarm's `ParseRelays`; repeat the flag or give a comma list; duplicates dropped. `KOLO_SHARE_RELAYS` is read only when neither `-relay` nor `-relay-file` is given |
 | `-relay-file` | none | none | a file of relays, one `host:port@key` per line, `#` starts a comment; repeatable, added to `-relay`. A regular file of at most 64 KiB; a missing or unreadable one "cannot be read" |
 | `-find-timeout` | `KOLO_SHARE_FIND_TIMEOUT` | `1m`, `72s` with relays | how long a pasted code looks for the computer that made it. With relays the default covers kolo-dht's hole punch window of 12 s, after which the relays are tried too, and one relay dial of 60 s |
 | `-lookup-interval` | `KOLO_SHARE_LOOKUP_INTERVAL` | `5s` | time between lookups of a topic, and the longest wait before a dial that failed is tried again, in a pairing and in a session |
