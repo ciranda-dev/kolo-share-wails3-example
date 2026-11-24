@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	// maxSessions is kolo-swarm's default MaxTopics: each session joins one topic.
-	maxSessions = 16
 	// maxOpenOffers bounds the open offers of a session in each direction: kolo-sync serves MaxStreams streams of
 	// a connection at once, so every open offer can be pulled without a busy answer.
 	maxOpenOffers = kolosync.MaxStreams

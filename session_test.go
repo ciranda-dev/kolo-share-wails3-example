@@ -1195,6 +1195,25 @@ func TestPairDeniedAtMaxSessions(t *testing.T) {
 	}
 }
 
+// Sixteen open sessions leave room for another: a pairing still connects.
+func TestPairPastSixteenSessions(t *testing.T) {
+	alice, bob := network(t, Config{}, nil)
+	alice.mu.Lock()
+	for i := range 16 {
+		id := fmt.Sprint("fake-", i)
+		alice.sessions[id] = &session{id: id, s: Session{ID: id, State: sessConnected}}
+	}
+	alice.mu.Unlock()
+	t.Cleanup(func() {
+		alice.mu.Lock()
+		for i := range 16 {
+			delete(alice.sessions, fmt.Sprint("fake-", i))
+		}
+		alice.mu.Unlock()
+	})
+	connect(t, alice, bob)
+}
+
 func TestPairReplacesSessionWithSameKey(t *testing.T) {
 	alice, bob := network(t, Config{}, nil)
 	sa, sb := connect(t, alice, bob)

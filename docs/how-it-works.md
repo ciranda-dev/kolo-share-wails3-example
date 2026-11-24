@@ -222,7 +222,7 @@ On a send line the same words follow `elapsed` after ` conns=N`.
 | sessions | 16 | kolo-swarm's default topic limit, one topic per session |
 | pairings | 1 | one code at a time per example |
 | items waiting, per session and direction | 16 | kolo-sync serves 16 streams per connection, so each can be pulled |
-| connections of the session swarm | 48 accepted, 64 dialed | the peers of 16 sessions, 16 hellos and 16 handshakes; 256 KiB of window each, and growth to 8 MiB for the paired peers within 124 MiB |
+| connections of the session swarm | 150 accepted, 268 dialed | the peers of 118 sessions, 16 hellos and 16 handshakes; 256 KiB of window each, and growth to 8 MiB for the paired peers within 914.5 MiB |
 | new items per minute, per session | 60 | kolo-invite's rate for one source |
 | bytes, files and folders per item | 1 TiB, 100,000 | `-max-download`, `-max-files` |
 | receives at once, per session | 4 | each has its own streams and its own room on the disk |
