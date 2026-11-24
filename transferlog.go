@@ -21,11 +21,10 @@ var transferEvery = 5 * time.Second
 // transferQuiet is -quiet-transfers: no line while a transfer runs. A pull still logs one line when it ends.
 var transferQuiet atomic.Bool
 
-// meteredPull is kolosync.Pull that logs where the time went: a "transfer: recv" line every transferEvery while
-// it runs and one when it ends, with the connection's own numbers at the end of the line. The lines hold counts,
-// sizes and times only, never a name, an address or a key.
-func meteredPull(ctx context.Context, conn kolosync.Conn, rep *kolostore.Replica) error {
-	var m kolosync.PullMeter
+// meteredPull is kolosync.Pull with the meter m that logs where the time went: a "transfer: recv" line every
+// transferEvery while it runs and one when it ends, with the connection's own numbers at the end of the line. The lines
+// hold counts, sizes and times only, never a name, an address or a key.
+func meteredPull(ctx context.Context, conn kolosync.Conn, rep *kolostore.Replica, m *kolosync.PullMeter) error {
 	stop := make(chan struct{})
 	var wg sync.WaitGroup
 	prev := recvTick{}
@@ -43,7 +42,7 @@ func meteredPull(ctx context.Context, conn kolosync.Conn, rep *kolostore.Replica
 			}
 		})
 	}
-	res, err := kolosync.PullWith(ctx, conn, rep, &kolosync.PullOptions{Meter: &m})
+	res, err := kolosync.PullWith(ctx, conn, rep, &kolosync.PullOptions{Meter: m})
 	close(stop)
 	wg.Wait()
 	state := "ok"

@@ -116,6 +116,7 @@ export const es = {
   'state.sending': '{name} lo está descargando',
   'state.sending.stalled': 'No se movió nada por un rato. Esperando la conexión, continúa solo.',
   'state.receiving.stalled': 'No se movió nada por un rato. Esperando la conexión, continúa solo.',
+  'state.receiving.slow': 'La conexión es lenta, {rate}. Continúa sola.',
   'state.delivered': '{name} lo guardó',
   'state.declined.send': '{name} lo rechazó',
   'state.declined.receive': 'Rechazado',

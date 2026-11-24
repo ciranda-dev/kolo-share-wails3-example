@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 
 	koloblobs "github.com/ciranda-dev/kolo-blobs"
@@ -40,6 +41,39 @@ type volume struct {
 	late          lateContent       // the content backend of tree, set when the content is whole
 	check         func(*kolofiles.Volume) error
 	checked       bool
+	got           received // the bytes the pulls took off the connection
+}
+
+// received counts the bytes of answers a receive took off the connection over all its pulls: the whole answers of
+// the pulls that ended, and every byte of the one running. A pull cut off in the middle of an answer loses that answer,
+// so the count can go back; what the window shows never does.
+type received struct {
+	mu   sync.Mutex
+	done uint64
+	cur  *kolosync.PullMeter
+}
+
+func (r *received) start(m *kolosync.PullMeter) {
+	r.mu.Lock()
+	r.cur = m
+	r.mu.Unlock()
+}
+
+func (r *received) end() {
+	r.mu.Lock()
+	r.done += r.cur.Stats().Bytes
+	r.cur = nil
+	r.mu.Unlock()
+}
+
+func (r *received) bytes() uint64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	n := r.done
+	if r.cur != nil {
+		n += r.cur.Stats().Received
+	}
+	return n
 }
 
 // lateContent is the content backend of a tree that is opened before its content is pulled: it serves nothing
@@ -67,7 +101,7 @@ func (l *lateContent) Put(context.Context, koloblobs.Hash, []byte) error {
 // can run again on the same vol after an error: what the replicas hold is verified and stays.
 func pullVolume(ctx context.Context, conn kolosync.Conn, st *kolostore.Store, owner ed25519.PublicKey, metaID kololog.LogID, lim limits, pulling *atomic.Pointer[kolostore.Replica], vol *volume) error {
 	if vol.tree == nil {
-		if err := pullLog(ctx, conn, st, owner, metaID, lim.metaEntries(), pulling, &vol.meta); err != nil {
+		if err := pullLog(ctx, conn, st, owner, metaID, lim.metaEntries(), pulling, &vol.meta, &vol.got); err != nil {
 			return err
 		}
 		tree, err := kolofiles.OpenReader(vol.meta, &vol.late, nil)
@@ -86,18 +120,19 @@ func pullVolume(ctx context.Context, conn kolosync.Conn, st *kolostore.Store, ow
 	if err != nil {
 		return err
 	}
-	return pullLog(ctx, conn, st, owner, id, lim.contentEntries(), pulling, &vol.content)
+	return pullLog(ctx, conn, st, owner, id, lim.contentEntries(), pulling, &vol.content, &vol.got)
 }
 
 // headEntries is the size of a signed head; tests put a smaller one in its place to play a log that grows
 // between its head and the pull.
 var headEntries = func(h kololog.VerifiedHead) uint64 { return h.Size() }
 
-// pull is kolo-sync's Pull with the "transfer:" log lines; tests count its calls.
+// pull is kolo-sync's Pull with the meter of the pull and the "transfer:" log lines; tests count its calls.
 var pull = meteredPull
 
-// pullLog brings *slot, the replica of log id, up to date; it opens the replica first when *slot is nil.
-func pullLog(ctx context.Context, conn kolosync.Conn, st *kolostore.Store, owner ed25519.PublicKey, id kololog.LogID, maxEntries uint64, pulling *atomic.Pointer[kolostore.Replica], slot **kolostore.Replica) error {
+// pullLog brings *slot, the replica of log id, up to date, counting what it takes off the connection in got; it opens
+// the replica first when *slot is nil.
+func pullLog(ctx context.Context, conn kolosync.Conn, st *kolostore.Store, owner ed25519.PublicKey, id kololog.LogID, maxEntries uint64, pulling *atomic.Pointer[kolostore.Replica], slot **kolostore.Replica, got *received) error {
 	head, err := kolosync.FetchHead(ctx, conn, owner, id)
 	if err != nil {
 		return err
@@ -116,7 +151,11 @@ func pullLog(ctx context.Context, conn kolosync.Conn, st *kolostore.Store, owner
 	}
 	rep := *slot
 	pulling.Store(rep)
-	if err := pull(ctx, conn, rep); err != nil {
+	var m kolosync.PullMeter
+	got.start(&m)
+	err = pull(ctx, conn, rep, &m)
+	got.end()
+	if err != nil {
 		return err
 	}
 	if rep.Len() > maxEntries { // grown since its head: the watcher may not have seen it

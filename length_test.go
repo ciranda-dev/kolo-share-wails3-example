@@ -171,9 +171,9 @@ func TestOfferWithALongNameIsDeclinedAtOnce(t *testing.T) {
 // the metadata and before any content: one pull, nothing in the folder.
 func refusedBeforeContent(t *testing.T, r lengthRules, src, name, reason string) {
 	t.Helper()
-	defer func(f func(context.Context, kolosync.Conn, *kolostore.Replica) error) { pull = f }(pull)
+	defer func(f func(context.Context, kolosync.Conn, *kolostore.Replica, *kolosync.PullMeter) error) { pull = f }(pull)
 	var pulls atomic.Int32
-	pull = func(ctx context.Context, c kolosync.Conn, rep *kolostore.Replica) error {
+	pull = func(ctx context.Context, c kolosync.Conn, rep *kolostore.Replica, m *kolosync.PullMeter) error {
 		pulls.Add(1)
 		return kolosync.Pull(ctx, c, rep)
 	}

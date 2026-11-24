@@ -163,7 +163,7 @@ func TestScaleLogOf150000Entries(t *testing.T) {
 	var pulling atomic.Pointer[kolostore.Replica]
 	var slot *kolostore.Replica
 	t0 = time.Now()
-	if err := pullLog(ctx, conn, rst, owner.PublicKey(), l.ID(), uint64(n), &pulling, &slot); err != nil {
+	if err := pullLog(ctx, conn, rst, owner.PublicKey(), l.ID(), uint64(n), &pulling, &slot, new(received)); err != nil {
 		t.Fatal(err)
 	}
 	pulled := time.Since(t0)
@@ -182,7 +182,7 @@ func TestScaleLogOf150000Entries(t *testing.T) {
 
 	// The limit the receive sets from the offer is hit at one entry over.
 	var over *kolostore.Replica
-	if err := pullLog(ctx, conn, rst, owner.PublicKey(), l.ID(), uint64(n)-1, &pulling, &over); err == nil {
+	if err := pullLog(ctx, conn, rst, owner.PublicKey(), l.ID(), uint64(n)-1, &pulling, &over, new(received)); err == nil {
 		t.Errorf("a log over the entry limit was accepted")
 	}
 

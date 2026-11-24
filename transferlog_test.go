@@ -382,7 +382,7 @@ func TestMeteredPullLogs(t *testing.T) {
 	f := newPullFixture(t, 12, 200<<10)
 	before := runtime.NumGoroutine()
 
-	if err := meteredPull(context.Background(), slowConn{f.conn, 120 * time.Millisecond}, f.rep()); err != nil {
+	if err := meteredPull(context.Background(), slowConn{f.conn, 120 * time.Millisecond}, f.rep(), new(kolosync.PullMeter)); err != nil {
 		t.Fatal(err)
 	}
 	if f.rep().Len() != f.size {
@@ -421,7 +421,7 @@ func TestMeteredPullQuiet(t *testing.T) {
 	defer transferQuiet.Store(false)
 	f := newPullFixture(t, 4, 100<<10)
 	before := runtime.NumGoroutine()
-	if err := meteredPull(context.Background(), slowConn{f.conn, 80 * time.Millisecond}, f.rep()); err != nil {
+	if err := meteredPull(context.Background(), slowConn{f.conn, 80 * time.Millisecond}, f.rep(), new(kolosync.PullMeter)); err != nil {
 		t.Fatal(err)
 	}
 	lines := sink.lines("transfer:")
@@ -440,7 +440,7 @@ func TestMeteredPullCanceled(t *testing.T) {
 	before := runtime.NumGoroutine()
 	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(60*time.Millisecond, cancel)
-	err := meteredPull(ctx, slowConn{f.conn, time.Hour}, f.rep())
+	err := meteredPull(ctx, slowConn{f.conn, time.Hour}, f.rep(), new(kolosync.PullMeter))
 	if err == nil {
 		t.Fatal("a canceled pull returned no error")
 	}
@@ -456,7 +456,7 @@ func TestMeteredPullError(t *testing.T) {
 	sink := captureLog(t)
 	f := newPullFixture(t, 2, 1<<10)
 	f.conn = deadConn{f.conn}
-	if err := meteredPull(context.Background(), f.conn, f.rep()); err == nil {
+	if err := meteredPull(context.Background(), f.conn, f.rep(), new(kolosync.PullMeter)); err == nil {
 		t.Fatal("no error")
 	}
 	lines := sink.lines("transfer: recv")

@@ -13,7 +13,7 @@ Every setting is a flag or an environment variable; a flag wins. A bad setting m
 | `-max-files` | `KOLO_SHARE_MAX_FILES` | `100000` | files and folders one item may hold, on both sides (see below) |
 | `-relay` | `KOLO_SHARE_RELAYS` | none | relays, `host:port@key` with the relay's key as 64 hex characters, as for kolo-swarm's `ParseRelays`; repeat the flag or give a comma list; at most 16 in all, duplicates dropped. `KOLO_SHARE_RELAYS` is read only when neither `-relay` nor `-relay-file` is given |
 | `-relay-file` | none | none | a file of relays, one `host:port@key` per line, `#` starts a comment; repeatable, added to `-relay`. A regular file of at most 64 KiB; a missing or unreadable one "cannot be read" |
-| `-find-timeout` | `KOLO_SHARE_FIND_TIMEOUT` | `1m`, `195s` with relays | how long a pasted code looks for the computer that made it. With relays the default covers kolo-dht's hole punch through up to three of its nodes, 45 s each, and one relay dial of 60 s, all of which can come before the relay is used |
+| `-find-timeout` | `KOLO_SHARE_FIND_TIMEOUT` | `1m`, `72s` with relays | how long a pasted code looks for the computer that made it. With relays the default covers kolo-dht's hole punch window of 12 s, after which the relays are tried too, and one relay dial of 60 s |
 | `-lookup-interval` | `KOLO_SHARE_LOOKUP_INTERVAL` | `5s` | time between lookups of a topic, and the longest wait before a dial that failed is tried again, in a pairing and in a session |
 | `-pair-ttl` | `KOLO_SHARE_PAIR_TTL` | `1h` | how long a pairing code works, from `1s` to `720h` (see below) |
 | `-resume-for` | `KOLO_SHARE_RESUME_FOR` | `30m` | how long a download waits for bytes that stopped before it fails, from `1s` to `24h` (see below) |
@@ -87,7 +87,7 @@ No rate limit, sleep or per-item deadline sits on the data path. The caps that e
 | readers of the first index of a log (kolo-blobs) | 4, in windows of 64 entries | memory (4 entries of up to 4 MiB) | no |
 | offers per minute, per session | 60 | a flood of offers; an item is one offer | no |
 | size of a message of kolo-sync | 4 MiB, answers filled to about 1 MiB | memory of the peer | no: the pull streams the answers (see below) |
-| time of a kolo-sync message | 60 s plus the message's size at 16 KiB/s | a silent peer | only below 16 KiB/s |
+| time of a kolo-sync message | 60 s to start, then each 16 KiB of it within 60 s, and the whole of it written at 500 bytes a second on average (about 36 minutes for an answer of 1 MiB) | a silent or trickling peer | only below 500 bytes a second |
 | `-resume-for` | 30 min, 1 s to 24 h | a sender that left | ends a stalled transfer, never a running one |
 | a card of an item being prepared | gives up after 2 min without a word; the sender speaks every 30 s, also during the scan of 100,000 files | a sender that left | no |
 | receive windows of kolo-transport | 256 KiB at the start, grown for the paired peer to 4 MiB per stream and 8 MiB per connection (`transport.go`) | memory of the connections of strangers and of the growth (see below) | a stream moves one window per round trip: about 335 Mbit/s at 100 ms once grown, 21 at the start |
@@ -126,7 +126,7 @@ Two computers that cannot connect directly, for example both behind strict NATs,
 ./bin/kolo-share -relay relay1.example.org:7448@<key in hex> -relay-file relays.txt
 ```
 
-- Both of the example's swarms use the list: the one of a pairing and the one of the sessions. A connection is tried directly first; a relay is used only when the direct connection fails.
+- Both of the example's swarms use the list: the one of a pairing and the one of the sessions. A connection is tried directly first; the relays are tried too when the direct connection fails, or when it has not connected after kolo-dht's hole punch window (12 s), and a direct connection that comes later replaces the relayed one.
 - Two computers meet through a relay only when both list it.
 - The example holds a place at its relays only while it shows a pairing code or has a session open.
 - A relay operator can read nothing of what it carries (the connection is encrypted end to end between the two examples), but learns your key, your address, and who connects to whom, when and how much.

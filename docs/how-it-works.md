@@ -68,6 +68,7 @@ Up to 4 items of a session are received at once, and sends in the other directio
 A receive that loses the connection, or whose pull stalls, does not end and does not ask for another click:
 
 - The two replicas of the item stay in the receive's store, with every entry kolo-sync already verified. The next pull of the same offer asks only for the entries after them.
+- The progress of a receive is the bytes kolo-sync took off the connection, so it moves with every packet, not once per answer of about 1 MiB, and the sender's row shows the same count. A receive that moves at under 64 kbit/s (8 KB/s) over the last 5 seconds says "The connection is slow, 6.0 KB/s. It continues by itself." with the speed it measures. kolo-sync cuts a message off only when 16 KiB of it did not arrive within 60 seconds, or when a whole answer averaged under 500 bytes a second, so a slow path finishes: 200 KiB at 2 KB/s took 2 minutes in a test and arrived.
 - The row says "Nothing moved for a while. Waiting for the connection, it continues by itself." as soon as the loss is known, or after 10 seconds without a byte, with no speed (the speed is measured over the last 5 seconds). The sender's row says the same while the peer is away.
 - The receive tries again when the session's connection is back, and otherwise after 1 second, doubling up to 15, starting again at 1 second after a pull that moved.
 - The sender keeps the offer open, and its guards serve the resumed pull on the new connection.

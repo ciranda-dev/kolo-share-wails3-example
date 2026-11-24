@@ -243,3 +243,46 @@ func TestParallelCheckoutCancel(t *testing.T) {
 	}
 	assertEmpty(t, dest)
 }
+
+// cancelOnRead is an FS whose files cancel a context when they are first read.
+type cancelOnRead struct {
+	fs.FS
+	cancel context.CancelFunc
+}
+
+func (c cancelOnRead) Open(name string) (fs.File, error) {
+	f, err := c.FS.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return readCancel{f, c.cancel}, nil
+}
+
+type readCancel struct {
+	fs.File
+	cancel context.CancelFunc
+}
+
+func (r readCancel) Read(p []byte) (int, error) {
+	r.cancel()
+	return r.File.Read(p)
+}
+
+// A cancel that comes while the last file is copied, after the copy's own checks, still saves nothing: the item is
+// not put in the folder once its receive was cancelled.
+func TestCheckoutCancelDuringTheLastCopy(t *testing.T) {
+	m := fstest.MapFS{"f": &fstest.MapFile{Data: randomBytes(t, 8000)}}
+	ctx, cancel := context.WithCancel(context.Background())
+	dest := t.TempDir()
+	p, err := planCheckout(m, kindFile, limits{bytes: 1 << 30, nodes: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var written counter
+	var n atomic.Int64
+	_, err = testWriter(t, dest).checkout(ctx, cancelOnRead{m, cancel}, p, &written, &n)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("checkout: %v, want the cancel", err)
+	}
+	assertEmpty(t, dest)
+}

@@ -116,6 +116,7 @@ export const en = {
   'state.sending': '{name} is downloading it',
   'state.sending.stalled': 'Nothing moved for a while. Waiting for the connection, it continues by itself.',
   'state.receiving.stalled': 'Nothing moved for a while. Waiting for the connection, it continues by itself.',
+  'state.receiving.slow': 'The connection is slow, {rate}. It continues by itself.',
   'state.delivered': '{name} saved it',
   'state.declined.send': '{name} declined',
   'state.declined.receive': 'Declined',

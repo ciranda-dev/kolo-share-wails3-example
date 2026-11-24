@@ -116,6 +116,7 @@ export const pt = {
   'state.sending': '{name} está baixando',
   'state.sending.stalled': 'Nada se moveu por um tempo. Esperando a conexão, continua sozinho.',
   'state.receiving.stalled': 'Nada se moveu por um tempo. Esperando a conexão, continua sozinho.',
+  'state.receiving.slow': 'A conexão está lenta, {rate}. Continua sozinha.',
   'state.delivered': '{name} salvou',
   'state.declined.send': '{name} recusou',
   'state.declined.receive': 'Recusado',

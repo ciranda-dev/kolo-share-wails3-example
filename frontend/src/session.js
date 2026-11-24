@@ -1,4 +1,4 @@
-import { formatBytes, formatCount, safeText } from './format.js'
+import { formatBytes, formatCount, formatRate, safeText } from './format.js'
 
 /** Final states of a transfer, in both directions. */
 export const FINAL = ['delivered', 'declined', 'cancelled', 'stopped', 'failed', 'done', 'withdrawn']
@@ -24,6 +24,9 @@ export function statusText(t, fail, lang, transfer, name) {
   }
   if (transfer.stalled && (state === 'sending' || state === 'receiving')) {
     return t(`state.${state}.stalled`)
+  }
+  if (transfer.slow && state === 'receiving') {
+    return t('state.receiving.slow', { rate: formatRate(transfer.bytesPerSecond, lang) })
   }
   if (state === 'done' && transfer.kind === 'folder' && transfer.filesTotal > 0) {
     return t('state.done.folder', { n: transfer.filesTotal, count: formatCount(transfer.filesTotal, lang) })
