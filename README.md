@@ -27,9 +27,9 @@
 
 | Platform | Install | Version | Status |
 |---|---|---|---|
-| macOS (universal) | `.dmg` or `.zip` | v0.1.0 | Beta, unsigned |
-| Windows (amd64, arm64) | installer `.exe`, `.exe` or `.zip` | v0.1.0 | Beta, unsigned |
-| Linux (amd64, arm64) | `.deb` or `.tar.gz` | v0.1.0 | Beta, unsigned |
+| macOS (universal) | `.dmg` or `.zip` | v0.1.1 | Beta, unsigned |
+| Windows (amd64, arm64) | installer `.exe`, `.exe` or `.zip` | v0.1.1 | Beta, unsigned |
+| Linux (amd64, arm64) | `.deb` or `.tar.gz` | v0.1.1 | Beta, unsigned |
 
 Get the files from the [latest release](https://github.com/ciranda-dev/kolo-share-wails3-example/releases), with `SHA256SUMS` to check them. They are not signed or notarized, so the system warns before the first run. Build your own with `scripts/release-local.sh` (see [build and test](docs/build-and-test.md)).
 
