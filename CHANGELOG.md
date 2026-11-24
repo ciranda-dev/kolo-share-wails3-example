@@ -19,6 +19,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Changed
 
+- `-bootstrap`, `-relay` and `-relay-file` no longer stop at 16 entries, as kolo-swarm no longer does. Duplicate and clashing relays are still refused.
 - The default `-find-timeout` with relays is 72 s instead of 195 s: kolo-swarm now tries the relays once kolo-dht's hole punch window (12 s) passed, not only after the direct attempt failed (up to 135 s), so a code pasted on a computer that needs a relay finds the other one sooner.
 
 ## [0.1.0] - 2026-11-20

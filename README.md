@@ -112,7 +112,7 @@ Start both examples with the same relay, `host:port@key` with the key as 64 hex 
 ./bin/kolo-share -bootstrap <ip-of-computer-a>:7447 -relay <relay-host>:7448@<relay-key>
 ```
 
-`-relay` repeats or takes a comma list, `-relay-file` reads one relay per line and `KOLO_SHARE_RELAYS` is used when neither flag is given; at most 16. Entry nodes run with `kolo-node run` on UDP port 7447. Commands, ports and the relay's limits: [your own servers](docs/own-servers.md).
+`-relay` repeats or takes a comma list, `-relay-file` reads one relay per line and `KOLO_SHARE_RELAYS` is used when neither flag is given. Entry nodes run with `kolo-node run` on UDP port 7447. Commands, ports and the relay's limits: [your own servers](docs/own-servers.md).
 
 ### With the installed macOS app
 
